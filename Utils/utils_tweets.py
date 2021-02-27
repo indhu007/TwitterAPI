@@ -15,37 +15,50 @@ class Tweets(BaseClass):
                   )
 
     def create_tweet(self,tweets):
-        url = self.Base_url +'/update.json?status=' + tweets
-        response = requests.post(url, auth=self.get_auth())
-        return response
+        try:
+            url = self.Base_url +'/update.json?status=' + tweets
+            response = requests.post(url, auth=self.get_auth())
+            return response
+        except Exception as e:
+            self.loginfo.error(str(e))
 
     def retweet(self,id):
-        url = self.Base_url +'/retweet/'+ id + '.json'
-        response = requests.post(url, auth=self.get_auth())
-        return response
+        try:
+            url = self.Base_url +'/retweet/'+ id + '.json'
+            response = requests.post(url, auth=self.get_auth())
+            return response
+        except Exception as e:
+            self.loginfo.error(str(e))
 
     def unretweet(self,id):
-        url = self.Base_url +'/unretweet/'+id+'.json'
-        response = requests.post(url, auth=self.get_auth())
-        return response
+        try:
+            url = self.Base_url +'/unretweet/'+id+'.json'
+            response = requests.post(url, auth=self.get_auth())
+            return response
+        except Exception as e:
+            self.loginfo.error(str(e))
 
     def delete_tweet(self,id):
-        url = self.Base_url +'/destroy/' + id + '.json'
-        response = requests.post(url, auth=self.get_auth())
-        return response
+        try:
+            url = self.Base_url +'/destroy/' + id + '.json'
+            response = requests.post(url, auth=self.get_auth())
+            return response
+        except Exception as e:
+            self.loginfo.error(str(e))
 
     def get_tweet_status(self,id):
-        url = self.Base_url +'/show.json?id='+ id + '&include_entities=true&tweet_mode=extended'
-        response = requests.get(url, auth=self.get_auth())
-        return response
+        try:
+            url = self.Base_url +'/show.json?id='+ id + '&include_entities=true&tweet_mode=extended'
+            response = requests.get(url, auth=self.get_auth())
+            return response
+        except Exception as e:
+            self.loginfo.error(str(e))
 
     def get_retweeter_id(self,id):
-        url = self.Base_url +'/retweeters/ids.json?id='+ id
-        response = requests.get(url, auth=self.get_auth())
-        return response
-
-    def get_id_from_Url(self,url):
-        id = url.split("/")[-1]
-        return id
-
+        try:
+            url = self.Base_url +'/retweeters/ids.json?id='+ id
+            response = requests.get(url, auth=self.get_auth())
+            return response
+        except Exception as e:
+            self.loginfo.error(str(e))
 

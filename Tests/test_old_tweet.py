@@ -14,8 +14,8 @@ class Test_OldTweet(Tweets):
     path = os.path.join(parent_dir, id)
     filename = id + '.txt'
 
-    @pytest.fixture(scope="module")
-    def create_data(self):
+    # @pytest.fixture(scope="module")
+    def test_create_data(self):
         try:
             os.makedirs(self.path, exist_ok=True)
 
@@ -39,39 +39,39 @@ class Test_OldTweet(Tweets):
 
     def test_tweet_content(self):
         response = self.get_tweet_status(self.id)
-        print(response)
-        assert response.status_code == 200
         res = response.json()
+        assert response.status_code == 200 , self.logger_test.error(res.get("error"))
+
         assert res.get("id") == int(self.id), "Id in the response is not matching the Id of the query"
         with open(os.path.join(self.path,self.filename), 'r') as tweetsfile:
             contents = tweetsfile.read()
             content = contents.split('RetweetCount:', 1)[0]
-        assert res.get("full_text") == (content.split(" ",1)[1]).rstrip("\n") , "Content stored and value in text does not match. check the id of the tweet"
+        assert res.get("full_text") == (content.split(" ",1)[1]).rstrip("\n") , self.logger_test.error("Content stored and value in text does not match. check the id of the tweet")
 
     def test_retweet_count(self):
         response = self.get_tweet_status(self.id)
-        print(response)
-        assert response.status_code == 200
         res = response.json()
-        assert res.get("id") == int(self.id), "Id in the response is not matching the Id of the query"
+        assert response.status_code == 200, self.logger_test.error(res.get("error"))
+
+        assert res.get("id") == int(self.id), self.logger_test.error("Id in the response is not matching the Id of the query")
         with open(os.path.join(self.path, self.filename), 'r') as tweetsfile:
             for line in tweetsfile:
                 if 'RetweetCount' in line:
                     content = line.split(' ', 1)[1]
                     break
         Retweet_Count = str(res.get("retweet_count"))
-        assert Retweet_Count == content.rstrip("\n"), "Retweet Count is not matching with the response> check the ID of the tweet"
+        assert Retweet_Count == content.rstrip("\n"), self.logger_test.error("Retweet Count is not matching with the response> check the ID of the tweet")
 
     def test_retweet_id(self):
         response = self.get_retweeter_id(self.id)
-        assert response.status_code == 200
         twitter_ids = response.json()
+        assert response.status_code == 200, self.logger_test.error(twitter_ids.get("error"))
         with open(os.path.join(self.path, self.filename), 'r') as tweetsfile:
             for line in tweetsfile:
                 if 'Twittersids' in line:
                     content = line.split(' ', 1)[1]
                     break
-        assert str(twitter_ids.get("ids")) == content.rstrip("\n"), "Retwiteeters ID's are not matching with the response> check the ID of the tweet"
+        assert str(twitter_ids.get("ids")) == content.rstrip("\n"), self.logger_test.error("Retwiteeters ID's are not matching with the response> check the ID of the tweet")
 
 
 
