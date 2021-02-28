@@ -1,0 +1,706 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8"/>
+    <title>Test Report</title>
+    <style>body {
+  font-family: Helvetica, Arial, sans-serif;
+  font-size: 12px;
+  /* do not increase min-width as some may use split screens */
+  min-width: 800px;
+  color: #999;
+}
+
+h1 {
+  font-size: 24px;
+  color: black;
+}
+
+h2 {
+  font-size: 16px;
+  color: black;
+}
+
+p {
+  color: black;
+}
+
+a {
+  color: #999;
+}
+
+table {
+  border-collapse: collapse;
+}
+
+/******************************
+ * SUMMARY INFORMATION
+ ******************************/
+#environment td {
+  padding: 5px;
+  border: 1px solid #E6E6E6;
+}
+#environment tr:nth-child(odd) {
+  background-color: #f6f6f6;
+}
+
+/******************************
+ * TEST RESULT COLORS
+ ******************************/
+span.passed,
+.passed .col-result {
+  color: green;
+}
+
+span.skipped,
+span.xfailed,
+span.rerun,
+.skipped .col-result,
+.xfailed .col-result,
+.rerun .col-result {
+  color: orange;
+}
+
+span.error,
+span.failed,
+span.xpassed,
+.error .col-result,
+.failed .col-result,
+.xpassed .col-result {
+  color: red;
+}
+
+/******************************
+ * RESULTS TABLE
+ *
+ * 1. Table Layout
+ * 2. Extra
+ * 3. Sorting items
+ *
+ ******************************/
+/*------------------
+ * 1. Table Layout
+ *------------------*/
+#results-table {
+  border: 1px solid #e6e6e6;
+  color: #999;
+  font-size: 12px;
+  width: 100%;
+}
+#results-table th,
+#results-table td {
+  padding: 5px;
+  border: 1px solid #E6E6E6;
+  text-align: left;
+}
+#results-table th {
+  font-weight: bold;
+}
+
+/*------------------
+ * 2. Extra
+ *------------------*/
+.log {
+  background-color: #e6e6e6;
+  border: 1px solid #e6e6e6;
+  color: black;
+  display: block;
+  font-family: "Courier New", Courier, monospace;
+  height: 230px;
+  overflow-y: scroll;
+  padding: 5px;
+  white-space: pre-wrap;
+}
+.log:only-child {
+  height: inherit;
+}
+
+div.image {
+  border: 1px solid #e6e6e6;
+  float: right;
+  height: 240px;
+  margin-left: 5px;
+  overflow: hidden;
+  width: 320px;
+}
+div.image img {
+  width: 320px;
+}
+
+div.video {
+  border: 1px solid #e6e6e6;
+  float: right;
+  height: 240px;
+  margin-left: 5px;
+  overflow: hidden;
+  width: 320px;
+}
+div.video video {
+  overflow: hidden;
+  width: 320px;
+  height: 240px;
+}
+
+.collapsed {
+  display: none;
+}
+
+.expander::after {
+  content: " (show details)";
+  color: #BBB;
+  font-style: italic;
+  cursor: pointer;
+}
+
+.collapser::after {
+  content: " (hide details)";
+  color: #BBB;
+  font-style: italic;
+  cursor: pointer;
+}
+
+/*------------------
+ * 3. Sorting items
+ *------------------*/
+.sortable {
+  cursor: pointer;
+}
+
+.sort-icon {
+  font-size: 0px;
+  float: left;
+  margin-right: 5px;
+  margin-top: 5px;
+  /*triangle*/
+  width: 0;
+  height: 0;
+  border-left: 8px solid transparent;
+  border-right: 8px solid transparent;
+}
+.inactive .sort-icon {
+  /*finish triangle*/
+  border-top: 8px solid #E6E6E6;
+}
+.asc.active .sort-icon {
+  /*finish triangle*/
+  border-bottom: 8px solid #999;
+}
+.desc.active .sort-icon {
+  /*finish triangle*/
+  border-top: 8px solid #999;
+}
+</style></head>
+  <body onLoad="init()">
+    <script>/* This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this file,
+ * You can obtain one at http://mozilla.org/MPL/2.0/. */
+
+
+function toArray(iter) {
+    if (iter === null) {
+        return null;
+    }
+    return Array.prototype.slice.call(iter);
+}
+
+function find(selector, elem) { // eslint-disable-line no-redeclare
+    if (!elem) {
+        elem = document;
+    }
+    return elem.querySelector(selector);
+}
+
+function findAll(selector, elem) {
+    if (!elem) {
+        elem = document;
+    }
+    return toArray(elem.querySelectorAll(selector));
+}
+
+function sortColumn(elem) {
+    toggleSortStates(elem);
+    const colIndex = toArray(elem.parentNode.childNodes).indexOf(elem);
+    let key;
+    if (elem.classList.contains('result')) {
+        key = keyResult;
+    } else if (elem.classList.contains('links')) {
+        key = keyLink;
+    } else {
+        key = keyAlpha;
+    }
+    sortTable(elem, key(colIndex));
+}
+
+function showAllExtras() { // eslint-disable-line no-unused-vars
+    findAll('.col-result').forEach(showExtras);
+}
+
+function hideAllExtras() { // eslint-disable-line no-unused-vars
+    findAll('.col-result').forEach(hideExtras);
+}
+
+function showExtras(colresultElem) {
+    const extras = colresultElem.parentNode.nextElementSibling;
+    const expandcollapse = colresultElem.firstElementChild;
+    extras.classList.remove('collapsed');
+    expandcollapse.classList.remove('expander');
+    expandcollapse.classList.add('collapser');
+}
+
+function hideExtras(colresultElem) {
+    const extras = colresultElem.parentNode.nextElementSibling;
+    const expandcollapse = colresultElem.firstElementChild;
+    extras.classList.add('collapsed');
+    expandcollapse.classList.remove('collapser');
+    expandcollapse.classList.add('expander');
+}
+
+function showFilters() {
+    const filterItems = document.getElementsByClassName('filter');
+    for (let i = 0; i < filterItems.length; i++)
+        filterItems[i].hidden = false;
+}
+
+function addCollapse() {
+    // Add links for show/hide all
+    const resulttable = find('table#results-table');
+    const showhideall = document.createElement('p');
+    showhideall.innerHTML = '<a href="javascript:showAllExtras()">Show all details</a> / ' +
+                            '<a href="javascript:hideAllExtras()">Hide all details</a>';
+    resulttable.parentElement.insertBefore(showhideall, resulttable);
+
+    // Add show/hide link to each result
+    findAll('.col-result').forEach(function(elem) {
+        const collapsed = getQueryParameter('collapsed') || 'Passed';
+        const extras = elem.parentNode.nextElementSibling;
+        const expandcollapse = document.createElement('span');
+        if (extras.classList.contains('collapsed')) {
+            expandcollapse.classList.add('expander');
+        } else if (collapsed.includes(elem.innerHTML)) {
+            extras.classList.add('collapsed');
+            expandcollapse.classList.add('expander');
+        } else {
+            expandcollapse.classList.add('collapser');
+        }
+        elem.appendChild(expandcollapse);
+
+        elem.addEventListener('click', function(event) {
+            if (event.currentTarget.parentNode.nextElementSibling.classList.contains('collapsed')) {
+                showExtras(event.currentTarget);
+            } else {
+                hideExtras(event.currentTarget);
+            }
+        });
+    });
+}
+
+function getQueryParameter(name) {
+    const match = RegExp('[?&]' + name + '=([^&]*)').exec(window.location.search);
+    return match && decodeURIComponent(match[1].replace(/\+/g, ' '));
+}
+
+function init () { // eslint-disable-line no-unused-vars
+    resetSortHeaders();
+
+    addCollapse();
+
+    showFilters();
+
+    sortColumn(find('.initial-sort'));
+
+    findAll('.sortable').forEach(function(elem) {
+        elem.addEventListener('click',
+            function() {
+                sortColumn(elem);
+            }, false);
+    });
+}
+
+function sortTable(clicked, keyFunc) {
+    const rows = findAll('.results-table-row');
+    const reversed = !clicked.classList.contains('asc');
+    const sortedRows = sort(rows, keyFunc, reversed);
+    /* Whole table is removed here because browsers acts much slower
+     * when appending existing elements.
+     */
+    const thead = document.getElementById('results-table-head');
+    document.getElementById('results-table').remove();
+    const parent = document.createElement('table');
+    parent.id = 'results-table';
+    parent.appendChild(thead);
+    sortedRows.forEach(function(elem) {
+        parent.appendChild(elem);
+    });
+    document.getElementsByTagName('BODY')[0].appendChild(parent);
+}
+
+function sort(items, keyFunc, reversed) {
+    const sortArray = items.map(function(item, i) {
+        return [keyFunc(item), i];
+    });
+
+    sortArray.sort(function(a, b) {
+        const keyA = a[0];
+        const keyB = b[0];
+
+        if (keyA == keyB) return 0;
+
+        if (reversed) {
+            return keyA < keyB ? 1 : -1;
+        } else {
+            return keyA > keyB ? 1 : -1;
+        }
+    });
+
+    return sortArray.map(function(item) {
+        const index = item[1];
+        return items[index];
+    });
+}
+
+function keyAlpha(colIndex) {
+    return function(elem) {
+        return elem.childNodes[1].childNodes[colIndex].firstChild.data.toLowerCase();
+    };
+}
+
+function keyLink(colIndex) {
+    return function(elem) {
+        const dataCell = elem.childNodes[1].childNodes[colIndex].firstChild;
+        return dataCell == null ? '' : dataCell.innerText.toLowerCase();
+    };
+}
+
+function keyResult(colIndex) {
+    return function(elem) {
+        const strings = ['Error', 'Failed', 'Rerun', 'XFailed', 'XPassed',
+            'Skipped', 'Passed'];
+        return strings.indexOf(elem.childNodes[1].childNodes[colIndex].firstChild.data);
+    };
+}
+
+function resetSortHeaders() {
+    findAll('.sort-icon').forEach(function(elem) {
+        elem.parentNode.removeChild(elem);
+    });
+    findAll('.sortable').forEach(function(elem) {
+        const icon = document.createElement('div');
+        icon.className = 'sort-icon';
+        icon.textContent = 'vvv';
+        elem.insertBefore(icon, elem.firstChild);
+        elem.classList.remove('desc', 'active');
+        elem.classList.add('asc', 'inactive');
+    });
+}
+
+function toggleSortStates(elem) {
+    //if active, toggle between asc and desc
+    if (elem.classList.contains('active')) {
+        elem.classList.toggle('asc');
+        elem.classList.toggle('desc');
+    }
+
+    //if inactive, reset all other functions and add ascending active
+    if (elem.classList.contains('inactive')) {
+        resetSortHeaders();
+        elem.classList.remove('inactive');
+        elem.classList.add('active');
+    }
+}
+
+function isAllRowsHidden(value) {
+    return value.hidden == false;
+}
+
+function filterTable(elem) { // eslint-disable-line no-unused-vars
+    const outcomeAtt = 'data-test-result';
+    const outcome = elem.getAttribute(outcomeAtt);
+    const classOutcome = outcome + ' results-table-row';
+    const outcomeRows = document.getElementsByClassName(classOutcome);
+
+    for(let i = 0; i < outcomeRows.length; i++){
+        outcomeRows[i].hidden = !elem.checked;
+    }
+
+    const rows = findAll('.results-table-row').filter(isAllRowsHidden);
+    const allRowsHidden = rows.length == 0 ? true : false;
+    const notFoundMessage = document.getElementById('not-found-message');
+    notFoundMessage.hidden = !allRowsHidden;
+}
+</script>
+    <h1>pytest_report.html</h1>
+    <p>Report generated on 28-Feb-2021 at 13:53:39 by <a href="https://pypi.python.org/pypi/pytest-html">pytest-html</a> v3.1.1</p>
+    <h2>Environment</h2>
+    <table id="environment">
+      <tr>
+        <td>Packages</td>
+        <td>{"pluggy": "0.13.1", "py": "1.10.0", "pytest": "6.2.2"}</td></tr>
+      <tr>
+        <td>Platform</td>
+        <td>Darwin-18.7.0-x86_64-i386-64bit</td></tr>
+      <tr>
+        <td>Plugins</td>
+        <td>{"html": "3.1.1", "metadata": "1.11.0"}</td></tr>
+      <tr>
+        <td>Python</td>
+        <td>3.7.2</td></tr></table>
+    <h2>Summary</h2>
+    <p>9 tests ran in 14.22 seconds. </p>
+    <p class="filter" hidden="true">(Un)check the boxes to filter the results.</p><input checked="true" class="filter" data-test-result="passed" hidden="true" name="filter_checkbox" onChange="filterTable(this)" type="checkbox"/><span class="passed">9 passed</span>, <input checked="true" class="filter" data-test-result="skipped" disabled="true" hidden="true" name="filter_checkbox" onChange="filterTable(this)" type="checkbox"/><span class="skipped">0 skipped</span>, <input checked="true" class="filter" data-test-result="failed" disabled="true" hidden="true" name="filter_checkbox" onChange="filterTable(this)" type="checkbox"/><span class="failed">0 failed</span>, <input checked="true" class="filter" data-test-result="error" disabled="true" hidden="true" name="filter_checkbox" onChange="filterTable(this)" type="checkbox"/><span class="error">0 errors</span>, <input checked="true" class="filter" data-test-result="xfailed" disabled="true" hidden="true" name="filter_checkbox" onChange="filterTable(this)" type="checkbox"/><span class="xfailed">0 expected failures</span>, <input checked="true" class="filter" data-test-result="xpassed" disabled="true" hidden="true" name="filter_checkbox" onChange="filterTable(this)" type="checkbox"/><span class="xpassed">0 unexpected passes</span>
+    <h2>Results</h2>
+    <table id="results-table">
+      <thead id="results-table-head">
+        <tr>
+          <th class="sortable result initial-sort" col="result">Result</th>
+          <th class="sortable" col="name">Test</th>
+          <th class="sortable" col="duration">Duration</th>
+          <th class="sortable links" col="links">Links</th></tr>
+        <tr hidden="true" id="not-found-message">
+          <th colspan="4">No results found. Try to check the filters</th></tr></thead>
+      <tbody class="passed results-table-row">
+        <tr>
+          <td class="col-result">Passed</td>
+          <td class="col-name">Tests/test_old_tweet.py::Test_OldTweet::test_tweet_content</td>
+          <td class="col-duration">5.12</td>
+          <td class="col-links"></td></tr>
+        <tr>
+          <td class="extra" colspan="4">
+            <div class="log"> -------------------------------Captured log setup------------------------------- <br/>DEBUG    requests_oauthlib.oauth1_auth:oauth1_auth.py:77 Signing request &lt;PreparedRequest [GET]&gt; using client &lt;Client client_key=tlBVDQqettBhxN3R2YMCkdT0x, client_secret=****, resource_owner_key=1260894064603467777-3HqxXTMpf9XTaHMXymmGp98K2ib5ae, resource_owner_secret=****, signature_method=HMAC-SHA1, signature_type=AUTH_HEADER, callback_uri=None, rsa_key=None, verifier=None, realm=None, encoding=utf-8, decoding=utf-8, nonce=None, timestamp=None&gt;
+DEBUG    requests_oauthlib.oauth1_auth:oauth1_auth.py:93 Including body in call to sign: False
+DEBUG    oauthlib.oauth1.rfc5849:__init__.py:133 Collected params: [(&#x27;id&#x27;, &#x27;1257326183101980673&#x27;), (&#x27;include_entities&#x27;, &#x27;true&#x27;), (&#x27;tweet_mode&#x27;, &#x27;extended&#x27;), (&#x27;oauth_nonce&#x27;, &#x27;30361999400781943751614500605&#x27;), (&#x27;oauth_timestamp&#x27;, &#x27;1614500605&#x27;), (&#x27;oauth_version&#x27;, &#x27;1.0&#x27;), (&#x27;oauth_signature_method&#x27;, &#x27;HMAC-SHA1&#x27;), (&#x27;oauth_consumer_key&#x27;, &#x27;tlBVDQqettBhxN3R2YMCkdT0x&#x27;), (&#x27;oauth_token&#x27;, &#x27;1260894064603467777-3HqxXTMpf9XTaHMXymmGp98K2ib5ae&#x27;)]
+DEBUG    oauthlib.oauth1.rfc5849:__init__.py:137 Normalized params: id=1257326183101980673&amp;include_entities=true&amp;oauth_consumer_key=tlBVDQqettBhxN3R2YMCkdT0x&amp;oauth_nonce=30361999400781943751614500605&amp;oauth_signature_method=HMAC-SHA1&amp;oauth_timestamp=1614500605&amp;oauth_token=1260894064603467777-3HqxXTMpf9XTaHMXymmGp98K2ib5ae&amp;oauth_version=1.0&amp;tweet_mode=extended
+DEBUG    oauthlib.oauth1.rfc5849:__init__.py:138 Normalized URI: https://api.twitter.com/1.1/statuses/show.json
+DEBUG    oauthlib.oauth1.rfc5849:__init__.py:143 Signing: signature base string: GET&amp;https%3A%2F%2Fapi.twitter.com%2F1.1%2Fstatuses%2Fshow.json&amp;id%3D1257326183101980673%26include_entities%3Dtrue%26oauth_consumer_key%3DtlBVDQqettBhxN3R2YMCkdT0x%26oauth_nonce%3D30361999400781943751614500605%26oauth_signature_method%3DHMAC-SHA1%26oauth_timestamp%3D1614500605%26oauth_token%3D1260894064603467777-3HqxXTMpf9XTaHMXymmGp98K2ib5ae%26oauth_version%3D1.0%26tweet_mode%3Dextended
+DEBUG    oauthlib.oauth1.rfc5849:__init__.py:150 Signature: xe97J+XVmW4zKEb4+XM5IPM9DeA=
+DEBUG    oauthlib.oauth1.rfc5849:__init__.py:320 Encoding URI, headers and body to utf-8.
+DEBUG    requests_oauthlib.oauth1_auth:oauth1_auth.py:114 Updated url: https://api.twitter.com/1.1/statuses/show.json?id=1257326183101980673&amp;include_entities=true&amp;tweet_mode=extended
+DEBUG    requests_oauthlib.oauth1_auth:oauth1_auth.py:115 Updated headers: {b&#x27;User-Agent&#x27;: b&#x27;python-requests/2.25.1&#x27;, b&#x27;Accept-Encoding&#x27;: b&#x27;gzip, deflate&#x27;, b&#x27;Accept&#x27;: b&#x27;*/*&#x27;, b&#x27;Connection&#x27;: b&#x27;keep-alive&#x27;, b&#x27;Authorization&#x27;: b&#x27;OAuth oauth_nonce=&quot;30361999400781943751614500605&quot;, oauth_timestamp=&quot;1614500605&quot;, oauth_version=&quot;1.0&quot;, oauth_signature_method=&quot;HMAC-SHA1&quot;, oauth_consumer_key=&quot;tlBVDQqettBhxN3R2YMCkdT0x&quot;, oauth_token=&quot;1260894064603467777-3HqxXTMpf9XTaHMXymmGp98K2ib5ae&quot;, oauth_signature=&quot;xe97J%2BXVmW4zKEb4%2BXM5IPM9DeA%3D&quot;&#x27;}
+DEBUG    requests_oauthlib.oauth1_auth:oauth1_auth.py:116 Updated body: None
+DEBUG    urllib3.connectionpool:connectionpool.py:975 Starting new HTTPS connection (1): api.twitter.com:443
+DEBUG    urllib3.connectionpool:connectionpool.py:461 https://api.twitter.com:443 &quot;GET /1.1/statuses/show.json?id=1257326183101980673&amp;include_entities=true&amp;tweet_mode=extended HTTP/1.1&quot; 200 1618
+INFO     Utils.BaseClass:BaseClass.py:39 Downloading file:ejxxK4Y8gLVTUFMZ.mp4
+DEBUG    urllib3.connectionpool:connectionpool.py:975 Starting new HTTPS connection (1): video.twimg.com:443
+DEBUG    urllib3.connectionpool:connectionpool.py:461 https://video.twimg.com:443 &quot;GET /amplify_video/1257324413873041411/vid/480x480/ejxxK4Y8gLVTUFMZ.mp4 HTTP/1.1&quot; 200 2103495
+INFO     Utils.BaseClass:BaseClass.py:47 ejxxK4Y8gLVTUFMZ.mp4 downloaded!
+
+DEBUG    requests_oauthlib.oauth1_auth:oauth1_auth.py:77 Signing request &lt;PreparedRequest [GET]&gt; using client &lt;Client client_key=tlBVDQqettBhxN3R2YMCkdT0x, client_secret=****, resource_owner_key=1260894064603467777-3HqxXTMpf9XTaHMXymmGp98K2ib5ae, resource_owner_secret=****, signature_method=HMAC-SHA1, signature_type=AUTH_HEADER, callback_uri=None, rsa_key=None, verifier=None, realm=None, encoding=utf-8, decoding=utf-8, nonce=None, timestamp=None&gt;
+DEBUG    requests_oauthlib.oauth1_auth:oauth1_auth.py:93 Including body in call to sign: False
+DEBUG    oauthlib.oauth1.rfc5849:__init__.py:133 Collected params: [(&#x27;id&#x27;, &#x27;1257326183101980673&#x27;), (&#x27;oauth_nonce&#x27;, &#x27;93718917176617933281614500607&#x27;), (&#x27;oauth_timestamp&#x27;, &#x27;1614500607&#x27;), (&#x27;oauth_version&#x27;, &#x27;1.0&#x27;), (&#x27;oauth_signature_method&#x27;, &#x27;HMAC-SHA1&#x27;), (&#x27;oauth_consumer_key&#x27;, &#x27;tlBVDQqettBhxN3R2YMCkdT0x&#x27;), (&#x27;oauth_token&#x27;, &#x27;1260894064603467777-3HqxXTMpf9XTaHMXymmGp98K2ib5ae&#x27;)]
+DEBUG    oauthlib.oauth1.rfc5849:__init__.py:137 Normalized params: id=1257326183101980673&amp;oauth_consumer_key=tlBVDQqettBhxN3R2YMCkdT0x&amp;oauth_nonce=93718917176617933281614500607&amp;oauth_signature_method=HMAC-SHA1&amp;oauth_timestamp=1614500607&amp;oauth_token=1260894064603467777-3HqxXTMpf9XTaHMXymmGp98K2ib5ae&amp;oauth_version=1.0
+DEBUG    oauthlib.oauth1.rfc5849:__init__.py:138 Normalized URI: https://api.twitter.com/1.1/statuses/retweeters/ids.json
+DEBUG    oauthlib.oauth1.rfc5849:__init__.py:143 Signing: signature base string: GET&amp;https%3A%2F%2Fapi.twitter.com%2F1.1%2Fstatuses%2Fretweeters%2Fids.json&amp;id%3D1257326183101980673%26oauth_consumer_key%3DtlBVDQqettBhxN3R2YMCkdT0x%26oauth_nonce%3D93718917176617933281614500607%26oauth_signature_method%3DHMAC-SHA1%26oauth_timestamp%3D1614500607%26oauth_token%3D1260894064603467777-3HqxXTMpf9XTaHMXymmGp98K2ib5ae%26oauth_version%3D1.0
+DEBUG    oauthlib.oauth1.rfc5849:__init__.py:150 Signature: ZsPSeLXtSF6pm0chRsQYyxLJtNA=
+DEBUG    oauthlib.oauth1.rfc5849:__init__.py:320 Encoding URI, headers and body to utf-8.
+DEBUG    requests_oauthlib.oauth1_auth:oauth1_auth.py:114 Updated url: https://api.twitter.com/1.1/statuses/retweeters/ids.json?id=1257326183101980673
+DEBUG    requests_oauthlib.oauth1_auth:oauth1_auth.py:115 Updated headers: {b&#x27;User-Agent&#x27;: b&#x27;python-requests/2.25.1&#x27;, b&#x27;Accept-Encoding&#x27;: b&#x27;gzip, deflate&#x27;, b&#x27;Accept&#x27;: b&#x27;*/*&#x27;, b&#x27;Connection&#x27;: b&#x27;keep-alive&#x27;, b&#x27;Authorization&#x27;: b&#x27;OAuth oauth_nonce=&quot;93718917176617933281614500607&quot;, oauth_timestamp=&quot;1614500607&quot;, oauth_version=&quot;1.0&quot;, oauth_signature_method=&quot;HMAC-SHA1&quot;, oauth_consumer_key=&quot;tlBVDQqettBhxN3R2YMCkdT0x&quot;, oauth_token=&quot;1260894064603467777-3HqxXTMpf9XTaHMXymmGp98K2ib5ae&quot;, oauth_signature=&quot;ZsPSeLXtSF6pm0chRsQYyxLJtNA%3D&quot;&#x27;}
+DEBUG    requests_oauthlib.oauth1_auth:oauth1_auth.py:116 Updated body: None
+DEBUG    urllib3.connectionpool:connectionpool.py:975 Starting new HTTPS connection (1): api.twitter.com:443
+DEBUG    urllib3.connectionpool:connectionpool.py:461 https://api.twitter.com:443 &quot;GET /1.1/statuses/retweeters/ids.json?id=1257326183101980673 HTTP/1.1&quot; 200 469<br/> -------------------------------Captured log call-------------------------------- <br/>DEBUG    requests_oauthlib.oauth1_auth:oauth1_auth.py:77 Signing request &lt;PreparedRequest [GET]&gt; using client &lt;Client client_key=tlBVDQqettBhxN3R2YMCkdT0x, client_secret=****, resource_owner_key=1260894064603467777-3HqxXTMpf9XTaHMXymmGp98K2ib5ae, resource_owner_secret=****, signature_method=HMAC-SHA1, signature_type=AUTH_HEADER, callback_uri=None, rsa_key=None, verifier=None, realm=None, encoding=utf-8, decoding=utf-8, nonce=None, timestamp=None&gt;
+DEBUG    requests_oauthlib.oauth1_auth:oauth1_auth.py:93 Including body in call to sign: False
+DEBUG    oauthlib.oauth1.rfc5849:__init__.py:133 Collected params: [(&#x27;id&#x27;, &#x27;1257326183101980673&#x27;), (&#x27;include_entities&#x27;, &#x27;true&#x27;), (&#x27;tweet_mode&#x27;, &#x27;extended&#x27;), (&#x27;oauth_nonce&#x27;, &#x27;7594410165825415091614500609&#x27;), (&#x27;oauth_timestamp&#x27;, &#x27;1614500609&#x27;), (&#x27;oauth_version&#x27;, &#x27;1.0&#x27;), (&#x27;oauth_signature_method&#x27;, &#x27;HMAC-SHA1&#x27;), (&#x27;oauth_consumer_key&#x27;, &#x27;tlBVDQqettBhxN3R2YMCkdT0x&#x27;), (&#x27;oauth_token&#x27;, &#x27;1260894064603467777-3HqxXTMpf9XTaHMXymmGp98K2ib5ae&#x27;)]
+DEBUG    oauthlib.oauth1.rfc5849:__init__.py:137 Normalized params: id=1257326183101980673&amp;include_entities=true&amp;oauth_consumer_key=tlBVDQqettBhxN3R2YMCkdT0x&amp;oauth_nonce=7594410165825415091614500609&amp;oauth_signature_method=HMAC-SHA1&amp;oauth_timestamp=1614500609&amp;oauth_token=1260894064603467777-3HqxXTMpf9XTaHMXymmGp98K2ib5ae&amp;oauth_version=1.0&amp;tweet_mode=extended
+DEBUG    oauthlib.oauth1.rfc5849:__init__.py:138 Normalized URI: https://api.twitter.com/1.1/statuses/show.json
+DEBUG    oauthlib.oauth1.rfc5849:__init__.py:143 Signing: signature base string: GET&amp;https%3A%2F%2Fapi.twitter.com%2F1.1%2Fstatuses%2Fshow.json&amp;id%3D1257326183101980673%26include_entities%3Dtrue%26oauth_consumer_key%3DtlBVDQqettBhxN3R2YMCkdT0x%26oauth_nonce%3D7594410165825415091614500609%26oauth_signature_method%3DHMAC-SHA1%26oauth_timestamp%3D1614500609%26oauth_token%3D1260894064603467777-3HqxXTMpf9XTaHMXymmGp98K2ib5ae%26oauth_version%3D1.0%26tweet_mode%3Dextended
+DEBUG    oauthlib.oauth1.rfc5849:__init__.py:150 Signature: N2wjo72rjm2BbQU8oAuS0m2CWVo=
+DEBUG    oauthlib.oauth1.rfc5849:__init__.py:320 Encoding URI, headers and body to utf-8.
+DEBUG    requests_oauthlib.oauth1_auth:oauth1_auth.py:114 Updated url: https://api.twitter.com/1.1/statuses/show.json?id=1257326183101980673&amp;include_entities=true&amp;tweet_mode=extended
+DEBUG    requests_oauthlib.oauth1_auth:oauth1_auth.py:115 Updated headers: {b&#x27;User-Agent&#x27;: b&#x27;python-requests/2.25.1&#x27;, b&#x27;Accept-Encoding&#x27;: b&#x27;gzip, deflate&#x27;, b&#x27;Accept&#x27;: b&#x27;*/*&#x27;, b&#x27;Connection&#x27;: b&#x27;keep-alive&#x27;, b&#x27;Authorization&#x27;: b&#x27;OAuth oauth_nonce=&quot;7594410165825415091614500609&quot;, oauth_timestamp=&quot;1614500609&quot;, oauth_version=&quot;1.0&quot;, oauth_signature_method=&quot;HMAC-SHA1&quot;, oauth_consumer_key=&quot;tlBVDQqettBhxN3R2YMCkdT0x&quot;, oauth_token=&quot;1260894064603467777-3HqxXTMpf9XTaHMXymmGp98K2ib5ae&quot;, oauth_signature=&quot;N2wjo72rjm2BbQU8oAuS0m2CWVo%3D&quot;&#x27;}
+DEBUG    requests_oauthlib.oauth1_auth:oauth1_auth.py:116 Updated body: None
+DEBUG    urllib3.connectionpool:connectionpool.py:975 Starting new HTTPS connection (1): api.twitter.com:443
+DEBUG    urllib3.connectionpool:connectionpool.py:461 https://api.twitter.com:443 &quot;GET /1.1/statuses/show.json?id=1257326183101980673&amp;include_entities=true&amp;tweet_mode=extended HTTP/1.1&quot; 200 1617<br/></div></td></tr></tbody>
+      <tbody class="passed results-table-row">
+        <tr>
+          <td class="col-result">Passed</td>
+          <td class="col-name">Tests/test_old_tweet.py::Test_OldTweet::test_retweet_count</td>
+          <td class="col-duration">0.81</td>
+          <td class="col-links"></td></tr>
+        <tr>
+          <td class="extra" colspan="4">
+            <div class="log"> -------------------------------Captured log call-------------------------------- <br/>DEBUG    requests_oauthlib.oauth1_auth:oauth1_auth.py:77 Signing request &lt;PreparedRequest [GET]&gt; using client &lt;Client client_key=tlBVDQqettBhxN3R2YMCkdT0x, client_secret=****, resource_owner_key=1260894064603467777-3HqxXTMpf9XTaHMXymmGp98K2ib5ae, resource_owner_secret=****, signature_method=HMAC-SHA1, signature_type=AUTH_HEADER, callback_uri=None, rsa_key=None, verifier=None, realm=None, encoding=utf-8, decoding=utf-8, nonce=None, timestamp=None&gt;
+DEBUG    requests_oauthlib.oauth1_auth:oauth1_auth.py:93 Including body in call to sign: False
+DEBUG    oauthlib.oauth1.rfc5849:__init__.py:133 Collected params: [(&#x27;id&#x27;, &#x27;1257326183101980673&#x27;), (&#x27;include_entities&#x27;, &#x27;true&#x27;), (&#x27;tweet_mode&#x27;, &#x27;extended&#x27;), (&#x27;oauth_nonce&#x27;, &#x27;84543765606742385541614500610&#x27;), (&#x27;oauth_timestamp&#x27;, &#x27;1614500610&#x27;), (&#x27;oauth_version&#x27;, &#x27;1.0&#x27;), (&#x27;oauth_signature_method&#x27;, &#x27;HMAC-SHA1&#x27;), (&#x27;oauth_consumer_key&#x27;, &#x27;tlBVDQqettBhxN3R2YMCkdT0x&#x27;), (&#x27;oauth_token&#x27;, &#x27;1260894064603467777-3HqxXTMpf9XTaHMXymmGp98K2ib5ae&#x27;)]
+DEBUG    oauthlib.oauth1.rfc5849:__init__.py:137 Normalized params: id=1257326183101980673&amp;include_entities=true&amp;oauth_consumer_key=tlBVDQqettBhxN3R2YMCkdT0x&amp;oauth_nonce=84543765606742385541614500610&amp;oauth_signature_method=HMAC-SHA1&amp;oauth_timestamp=1614500610&amp;oauth_token=1260894064603467777-3HqxXTMpf9XTaHMXymmGp98K2ib5ae&amp;oauth_version=1.0&amp;tweet_mode=extended
+DEBUG    oauthlib.oauth1.rfc5849:__init__.py:138 Normalized URI: https://api.twitter.com/1.1/statuses/show.json
+DEBUG    oauthlib.oauth1.rfc5849:__init__.py:143 Signing: signature base string: GET&amp;https%3A%2F%2Fapi.twitter.com%2F1.1%2Fstatuses%2Fshow.json&amp;id%3D1257326183101980673%26include_entities%3Dtrue%26oauth_consumer_key%3DtlBVDQqettBhxN3R2YMCkdT0x%26oauth_nonce%3D84543765606742385541614500610%26oauth_signature_method%3DHMAC-SHA1%26oauth_timestamp%3D1614500610%26oauth_token%3D1260894064603467777-3HqxXTMpf9XTaHMXymmGp98K2ib5ae%26oauth_version%3D1.0%26tweet_mode%3Dextended
+DEBUG    oauthlib.oauth1.rfc5849:__init__.py:150 Signature: RXyEyMzKG7dEHfisy8BKZc3Y36Q=
+DEBUG    oauthlib.oauth1.rfc5849:__init__.py:320 Encoding URI, headers and body to utf-8.
+DEBUG    requests_oauthlib.oauth1_auth:oauth1_auth.py:114 Updated url: https://api.twitter.com/1.1/statuses/show.json?id=1257326183101980673&amp;include_entities=true&amp;tweet_mode=extended
+DEBUG    requests_oauthlib.oauth1_auth:oauth1_auth.py:115 Updated headers: {b&#x27;User-Agent&#x27;: b&#x27;python-requests/2.25.1&#x27;, b&#x27;Accept-Encoding&#x27;: b&#x27;gzip, deflate&#x27;, b&#x27;Accept&#x27;: b&#x27;*/*&#x27;, b&#x27;Connection&#x27;: b&#x27;keep-alive&#x27;, b&#x27;Authorization&#x27;: b&#x27;OAuth oauth_nonce=&quot;84543765606742385541614500610&quot;, oauth_timestamp=&quot;1614500610&quot;, oauth_version=&quot;1.0&quot;, oauth_signature_method=&quot;HMAC-SHA1&quot;, oauth_consumer_key=&quot;tlBVDQqettBhxN3R2YMCkdT0x&quot;, oauth_token=&quot;1260894064603467777-3HqxXTMpf9XTaHMXymmGp98K2ib5ae&quot;, oauth_signature=&quot;RXyEyMzKG7dEHfisy8BKZc3Y36Q%3D&quot;&#x27;}
+DEBUG    requests_oauthlib.oauth1_auth:oauth1_auth.py:116 Updated body: None
+DEBUG    urllib3.connectionpool:connectionpool.py:975 Starting new HTTPS connection (1): api.twitter.com:443
+DEBUG    urllib3.connectionpool:connectionpool.py:461 https://api.twitter.com:443 &quot;GET /1.1/statuses/show.json?id=1257326183101980673&amp;include_entities=true&amp;tweet_mode=extended HTTP/1.1&quot; 200 1617<br/></div></td></tr></tbody>
+      <tbody class="passed results-table-row">
+        <tr>
+          <td class="col-result">Passed</td>
+          <td class="col-name">Tests/test_old_tweet.py::Test_OldTweet::test_retweet_id</td>
+          <td class="col-duration">1.02</td>
+          <td class="col-links"></td></tr>
+        <tr>
+          <td class="extra" colspan="4">
+            <div class="log"> -------------------------------Captured log call-------------------------------- <br/>DEBUG    requests_oauthlib.oauth1_auth:oauth1_auth.py:77 Signing request &lt;PreparedRequest [GET]&gt; using client &lt;Client client_key=tlBVDQqettBhxN3R2YMCkdT0x, client_secret=****, resource_owner_key=1260894064603467777-3HqxXTMpf9XTaHMXymmGp98K2ib5ae, resource_owner_secret=****, signature_method=HMAC-SHA1, signature_type=AUTH_HEADER, callback_uri=None, rsa_key=None, verifier=None, realm=None, encoding=utf-8, decoding=utf-8, nonce=None, timestamp=None&gt;
+DEBUG    requests_oauthlib.oauth1_auth:oauth1_auth.py:93 Including body in call to sign: False
+DEBUG    oauthlib.oauth1.rfc5849:__init__.py:133 Collected params: [(&#x27;id&#x27;, &#x27;1257326183101980673&#x27;), (&#x27;oauth_nonce&#x27;, &#x27;12712903871403056001614500611&#x27;), (&#x27;oauth_timestamp&#x27;, &#x27;1614500611&#x27;), (&#x27;oauth_version&#x27;, &#x27;1.0&#x27;), (&#x27;oauth_signature_method&#x27;, &#x27;HMAC-SHA1&#x27;), (&#x27;oauth_consumer_key&#x27;, &#x27;tlBVDQqettBhxN3R2YMCkdT0x&#x27;), (&#x27;oauth_token&#x27;, &#x27;1260894064603467777-3HqxXTMpf9XTaHMXymmGp98K2ib5ae&#x27;)]
+DEBUG    oauthlib.oauth1.rfc5849:__init__.py:137 Normalized params: id=1257326183101980673&amp;oauth_consumer_key=tlBVDQqettBhxN3R2YMCkdT0x&amp;oauth_nonce=12712903871403056001614500611&amp;oauth_signature_method=HMAC-SHA1&amp;oauth_timestamp=1614500611&amp;oauth_token=1260894064603467777-3HqxXTMpf9XTaHMXymmGp98K2ib5ae&amp;oauth_version=1.0
+DEBUG    oauthlib.oauth1.rfc5849:__init__.py:138 Normalized URI: https://api.twitter.com/1.1/statuses/retweeters/ids.json
+DEBUG    oauthlib.oauth1.rfc5849:__init__.py:143 Signing: signature base string: GET&amp;https%3A%2F%2Fapi.twitter.com%2F1.1%2Fstatuses%2Fretweeters%2Fids.json&amp;id%3D1257326183101980673%26oauth_consumer_key%3DtlBVDQqettBhxN3R2YMCkdT0x%26oauth_nonce%3D12712903871403056001614500611%26oauth_signature_method%3DHMAC-SHA1%26oauth_timestamp%3D1614500611%26oauth_token%3D1260894064603467777-3HqxXTMpf9XTaHMXymmGp98K2ib5ae%26oauth_version%3D1.0
+DEBUG    oauthlib.oauth1.rfc5849:__init__.py:150 Signature: k6V/VINqUHXF//JI93IW/IkZZxE=
+DEBUG    oauthlib.oauth1.rfc5849:__init__.py:320 Encoding URI, headers and body to utf-8.
+DEBUG    requests_oauthlib.oauth1_auth:oauth1_auth.py:114 Updated url: https://api.twitter.com/1.1/statuses/retweeters/ids.json?id=1257326183101980673
+DEBUG    requests_oauthlib.oauth1_auth:oauth1_auth.py:115 Updated headers: {b&#x27;User-Agent&#x27;: b&#x27;python-requests/2.25.1&#x27;, b&#x27;Accept-Encoding&#x27;: b&#x27;gzip, deflate&#x27;, b&#x27;Accept&#x27;: b&#x27;*/*&#x27;, b&#x27;Connection&#x27;: b&#x27;keep-alive&#x27;, b&#x27;Authorization&#x27;: b&#x27;OAuth oauth_nonce=&quot;12712903871403056001614500611&quot;, oauth_timestamp=&quot;1614500611&quot;, oauth_version=&quot;1.0&quot;, oauth_signature_method=&quot;HMAC-SHA1&quot;, oauth_consumer_key=&quot;tlBVDQqettBhxN3R2YMCkdT0x&quot;, oauth_token=&quot;1260894064603467777-3HqxXTMpf9XTaHMXymmGp98K2ib5ae&quot;, oauth_signature=&quot;k6V%2FVINqUHXF%2F%2FJI93IW%2FIkZZxE%3D&quot;&#x27;}
+DEBUG    requests_oauthlib.oauth1_auth:oauth1_auth.py:116 Updated body: None
+DEBUG    urllib3.connectionpool:connectionpool.py:975 Starting new HTTPS connection (1): api.twitter.com:443
+DEBUG    urllib3.connectionpool:connectionpool.py:461 https://api.twitter.com:443 &quot;GET /1.1/statuses/retweeters/ids.json?id=1257326183101980673 HTTP/1.1&quot; 200 469<br/></div></td></tr></tbody>
+      <tbody class="passed results-table-row">
+        <tr>
+          <td class="col-result">Passed</td>
+          <td class="col-name">Tests/test_tweet.py::TestTweet::test_create_tweet[We welcome you to MSD family :)]</td>
+          <td class="col-duration">0.93</td>
+          <td class="col-links"></td></tr>
+        <tr>
+          <td class="extra" colspan="4">
+            <div class="log"> -------------------------------Captured log call-------------------------------- <br/>DEBUG    requests_oauthlib.oauth1_auth:oauth1_auth.py:77 Signing request &lt;PreparedRequest [POST]&gt; using client &lt;Client client_key=tlBVDQqettBhxN3R2YMCkdT0x, client_secret=****, resource_owner_key=1260894064603467777-3HqxXTMpf9XTaHMXymmGp98K2ib5ae, resource_owner_secret=****, signature_method=HMAC-SHA1, signature_type=AUTH_HEADER, callback_uri=None, rsa_key=None, verifier=None, realm=None, encoding=utf-8, decoding=utf-8, nonce=None, timestamp=None&gt;
+DEBUG    requests_oauthlib.oauth1_auth:oauth1_auth.py:93 Including body in call to sign: False
+DEBUG    oauthlib.oauth1.rfc5849:__init__.py:133 Collected params: [(&#x27;status&#x27;, &#x27;We welcome you to MSD family :)&#x27;), (&#x27;oauth_nonce&#x27;, &#x27;62738050662868842161614500612&#x27;), (&#x27;oauth_timestamp&#x27;, &#x27;1614500612&#x27;), (&#x27;oauth_version&#x27;, &#x27;1.0&#x27;), (&#x27;oauth_signature_method&#x27;, &#x27;HMAC-SHA1&#x27;), (&#x27;oauth_consumer_key&#x27;, &#x27;tlBVDQqettBhxN3R2YMCkdT0x&#x27;), (&#x27;oauth_token&#x27;, &#x27;1260894064603467777-3HqxXTMpf9XTaHMXymmGp98K2ib5ae&#x27;)]
+DEBUG    oauthlib.oauth1.rfc5849:__init__.py:137 Normalized params: oauth_consumer_key=tlBVDQqettBhxN3R2YMCkdT0x&amp;oauth_nonce=62738050662868842161614500612&amp;oauth_signature_method=HMAC-SHA1&amp;oauth_timestamp=1614500612&amp;oauth_token=1260894064603467777-3HqxXTMpf9XTaHMXymmGp98K2ib5ae&amp;oauth_version=1.0&amp;status=We%20welcome%20you%20to%20MSD%20family%20%3A%29
+DEBUG    oauthlib.oauth1.rfc5849:__init__.py:138 Normalized URI: https://api.twitter.com/1.1/statuses/update.json
+DEBUG    oauthlib.oauth1.rfc5849:__init__.py:143 Signing: signature base string: POST&amp;https%3A%2F%2Fapi.twitter.com%2F1.1%2Fstatuses%2Fupdate.json&amp;oauth_consumer_key%3DtlBVDQqettBhxN3R2YMCkdT0x%26oauth_nonce%3D62738050662868842161614500612%26oauth_signature_method%3DHMAC-SHA1%26oauth_timestamp%3D1614500612%26oauth_token%3D1260894064603467777-3HqxXTMpf9XTaHMXymmGp98K2ib5ae%26oauth_version%3D1.0%26status%3DWe%2520welcome%2520you%2520to%2520MSD%2520family%2520%253A%2529
+DEBUG    oauthlib.oauth1.rfc5849:__init__.py:150 Signature: jJDwK9dzZxrJ8aodxow0ZvJtuQc=
+DEBUG    oauthlib.oauth1.rfc5849:__init__.py:320 Encoding URI, headers and body to utf-8.
+DEBUG    requests_oauthlib.oauth1_auth:oauth1_auth.py:114 Updated url: https://api.twitter.com/1.1/statuses/update.json?status=We%20welcome%20you%20to%20MSD%20family%20%3A%29
+DEBUG    requests_oauthlib.oauth1_auth:oauth1_auth.py:115 Updated headers: {b&#x27;User-Agent&#x27;: b&#x27;python-requests/2.25.1&#x27;, b&#x27;Accept-Encoding&#x27;: b&#x27;gzip, deflate&#x27;, b&#x27;Accept&#x27;: b&#x27;*/*&#x27;, b&#x27;Connection&#x27;: b&#x27;keep-alive&#x27;, b&#x27;Content-Length&#x27;: b&#x27;0&#x27;, b&#x27;Authorization&#x27;: b&#x27;OAuth oauth_nonce=&quot;62738050662868842161614500612&quot;, oauth_timestamp=&quot;1614500612&quot;, oauth_version=&quot;1.0&quot;, oauth_signature_method=&quot;HMAC-SHA1&quot;, oauth_consumer_key=&quot;tlBVDQqettBhxN3R2YMCkdT0x&quot;, oauth_token=&quot;1260894064603467777-3HqxXTMpf9XTaHMXymmGp98K2ib5ae&quot;, oauth_signature=&quot;jJDwK9dzZxrJ8aodxow0ZvJtuQc%3D&quot;&#x27;}
+DEBUG    requests_oauthlib.oauth1_auth:oauth1_auth.py:116 Updated body: None
+DEBUG    urllib3.connectionpool:connectionpool.py:975 Starting new HTTPS connection (1): api.twitter.com:443
+DEBUG    urllib3.connectionpool:connectionpool.py:461 https://api.twitter.com:443 &quot;POST /1.1/statuses/update.json?status=We%20welcome%20you%20to%20MSD%20family%20%3A%29 HTTP/1.1&quot; 200 743
+INFO     Tests.test_tweet:test_tweet.py:24 {&#x27;created_at&#x27;: &#x27;Sun Feb 28 08:23:32 +0000 2021&#x27;, &#x27;id&#x27;: 1365940688416776192, &#x27;id_str&#x27;: &#x27;1365940688416776192&#x27;, &#x27;text&#x27;: &#x27;We welcome you to MSD family :)&#x27;, &#x27;truncated&#x27;: False, &#x27;entities&#x27;: {&#x27;hashtags&#x27;: [], &#x27;symbols&#x27;: [], &#x27;user_mentions&#x27;: [], &#x27;urls&#x27;: []}, &#x27;source&#x27;: &#x27;&#x27;, &#x27;in_reply_to_status_id&#x27;: None, &#x27;in_reply_to_status_id_str&#x27;: None, &#x27;in_reply_to_user_id&#x27;: None, &#x27;in_reply_to_user_id_str&#x27;: None, &#x27;in_reply_to_screen_name&#x27;: None, &#x27;user&#x27;: {&#x27;id&#x27;: 1260894064603467777, &#x27;id_str&#x27;: &#x27;1260894064603467777&#x27;, &#x27;name&#x27;: &#x27;Subasri Sridhar&#x27;, &#x27;screen_name&#x27;: &#x27;SridharSubasri&#x27;, &#x27;location&#x27;: &#x27;&#x27;, &#x27;description&#x27;: &#x27;&#x27;, &#x27;url&#x27;: None, &#x27;entities&#x27;: {&#x27;description&#x27;: {&#x27;urls&#x27;: []}}, &#x27;protected&#x27;: False, &#x27;followers_count&#x27;: 3, &#x27;friends_count&#x27;: 117, &#x27;listed_count&#x27;: 0, &#x27;created_at&#x27;: &#x27;Thu May 14 11:26:20 +0000 2020&#x27;, &#x27;favourites_count&#x27;: 30, &#x27;utc_offset&#x27;: None, &#x27;time_zone&#x27;: None, &#x27;geo_enabled&#x27;: False, &#x27;verified&#x27;: False, &#x27;statuses_count&#x27;: 4, &#x27;lang&#x27;: None, &#x27;contributors_enabled&#x27;: False, &#x27;is_translator&#x27;: False, &#x27;is_translation_enabled&#x27;: False, &#x27;profile_background_color&#x27;: &#x27;F5F8FA&#x27;, &#x27;profile_background_image_url&#x27;: None, &#x27;profile_background_image_url_https&#x27;: None, &#x27;profile_background_tile&#x27;: False, &#x27;profile_image_url&#x27;: &#x27;http://pbs.twimg.com/profile_images/1260894305637543937/gIlTB5hC_normal.jpg&#x27;, &#x27;profile_image_url_https&#x27;: &#x27;https://pbs.twimg.com/profile_images/1260894305637543937/gIlTB5hC_normal.jpg&#x27;, &#x27;profile_link_color&#x27;: &#x27;1DA1F2&#x27;, &#x27;profile_sidebar_border_color&#x27;: &#x27;C0DEED&#x27;, &#x27;profile_sidebar_fill_color&#x27;: &#x27;DDEEF6&#x27;, &#x27;profile_text_color&#x27;: &#x27;333333&#x27;, &#x27;profile_use_background_image&#x27;: True, &#x27;has_extended_profile&#x27;: False, &#x27;default_profile&#x27;: True, &#x27;default_profile_image&#x27;: False, &#x27;following&#x27;: False, &#x27;follow_request_sent&#x27;: False, &#x27;notifications&#x27;: False, &#x27;translator_type&#x27;: &#x27;none&#x27;}, &#x27;geo&#x27;: None, &#x27;coordinates&#x27;: None, &#x27;place&#x27;: None, &#x27;contributors&#x27;: None, &#x27;is_quote_status&#x27;: False, &#x27;retweet_count&#x27;: 0, &#x27;favorite_count&#x27;: 0, &#x27;favorited&#x27;: False, &#x27;retweeted&#x27;: False, &#x27;lang&#x27;: &#x27;en&#x27;}<br/></div></td></tr></tbody>
+      <tbody class="passed results-table-row">
+        <tr>
+          <td class="col-result">Passed</td>
+          <td class="col-name">Tests/test_tweet.py::TestTweet::test_retweet</td>
+          <td class="col-duration">1.11</td>
+          <td class="col-links"></td></tr>
+        <tr>
+          <td class="extra" colspan="4">
+            <div class="log"> ------------------------------Captured stdout call------------------------------ <br/>1365940692011290625
+<br/> -------------------------------Captured log call-------------------------------- <br/>DEBUG    requests_oauthlib.oauth1_auth:oauth1_auth.py:77 Signing request &lt;PreparedRequest [POST]&gt; using client &lt;Client client_key=tlBVDQqettBhxN3R2YMCkdT0x, client_secret=****, resource_owner_key=1260894064603467777-3HqxXTMpf9XTaHMXymmGp98K2ib5ae, resource_owner_secret=****, signature_method=HMAC-SHA1, signature_type=AUTH_HEADER, callback_uri=None, rsa_key=None, verifier=None, realm=None, encoding=utf-8, decoding=utf-8, nonce=None, timestamp=None&gt;
+DEBUG    requests_oauthlib.oauth1_auth:oauth1_auth.py:93 Including body in call to sign: False
+DEBUG    oauthlib.oauth1.rfc5849:__init__.py:133 Collected params: [(&#x27;oauth_nonce&#x27;, &#x27;160626080054351861811614500612&#x27;), (&#x27;oauth_timestamp&#x27;, &#x27;1614500612&#x27;), (&#x27;oauth_version&#x27;, &#x27;1.0&#x27;), (&#x27;oauth_signature_method&#x27;, &#x27;HMAC-SHA1&#x27;), (&#x27;oauth_consumer_key&#x27;, &#x27;tlBVDQqettBhxN3R2YMCkdT0x&#x27;), (&#x27;oauth_token&#x27;, &#x27;1260894064603467777-3HqxXTMpf9XTaHMXymmGp98K2ib5ae&#x27;)]
+DEBUG    oauthlib.oauth1.rfc5849:__init__.py:137 Normalized params: oauth_consumer_key=tlBVDQqettBhxN3R2YMCkdT0x&amp;oauth_nonce=160626080054351861811614500612&amp;oauth_signature_method=HMAC-SHA1&amp;oauth_timestamp=1614500612&amp;oauth_token=1260894064603467777-3HqxXTMpf9XTaHMXymmGp98K2ib5ae&amp;oauth_version=1.0
+DEBUG    oauthlib.oauth1.rfc5849:__init__.py:138 Normalized URI: https://api.twitter.com/1.1/statuses/retweet/1365940688416776192.json
+DEBUG    oauthlib.oauth1.rfc5849:__init__.py:143 Signing: signature base string: POST&amp;https%3A%2F%2Fapi.twitter.com%2F1.1%2Fstatuses%2Fretweet%2F1365940688416776192.json&amp;oauth_consumer_key%3DtlBVDQqettBhxN3R2YMCkdT0x%26oauth_nonce%3D160626080054351861811614500612%26oauth_signature_method%3DHMAC-SHA1%26oauth_timestamp%3D1614500612%26oauth_token%3D1260894064603467777-3HqxXTMpf9XTaHMXymmGp98K2ib5ae%26oauth_version%3D1.0
+DEBUG    oauthlib.oauth1.rfc5849:__init__.py:150 Signature: kRcM2BZM+A3+FfxD0xp8NLFDve4=
+DEBUG    oauthlib.oauth1.rfc5849:__init__.py:320 Encoding URI, headers and body to utf-8.
+DEBUG    requests_oauthlib.oauth1_auth:oauth1_auth.py:114 Updated url: https://api.twitter.com/1.1/statuses/retweet/1365940688416776192.json
+DEBUG    requests_oauthlib.oauth1_auth:oauth1_auth.py:115 Updated headers: {b&#x27;User-Agent&#x27;: b&#x27;python-requests/2.25.1&#x27;, b&#x27;Accept-Encoding&#x27;: b&#x27;gzip, deflate&#x27;, b&#x27;Accept&#x27;: b&#x27;*/*&#x27;, b&#x27;Connection&#x27;: b&#x27;keep-alive&#x27;, b&#x27;Content-Length&#x27;: b&#x27;0&#x27;, b&#x27;Authorization&#x27;: b&#x27;OAuth oauth_nonce=&quot;160626080054351861811614500612&quot;, oauth_timestamp=&quot;1614500612&quot;, oauth_version=&quot;1.0&quot;, oauth_signature_method=&quot;HMAC-SHA1&quot;, oauth_consumer_key=&quot;tlBVDQqettBhxN3R2YMCkdT0x&quot;, oauth_token=&quot;1260894064603467777-3HqxXTMpf9XTaHMXymmGp98K2ib5ae&quot;, oauth_signature=&quot;kRcM2BZM%2BA3%2BFfxD0xp8NLFDve4%3D&quot;&#x27;}
+DEBUG    requests_oauthlib.oauth1_auth:oauth1_auth.py:116 Updated body: None
+DEBUG    urllib3.connectionpool:connectionpool.py:975 Starting new HTTPS connection (1): api.twitter.com:443
+DEBUG    urllib3.connectionpool:connectionpool.py:461 https://api.twitter.com:443 &quot;POST /1.1/statuses/retweet/1365940688416776192.json HTTP/1.1&quot; 200 835<br/></div></td></tr></tbody>
+      <tbody class="passed results-table-row">
+        <tr>
+          <td class="col-result">Passed</td>
+          <td class="col-name">Tests/test_tweet.py::TestTweet::test_count_retweet</td>
+          <td class="col-duration">0.84</td>
+          <td class="col-links"></td></tr>
+        <tr>
+          <td class="extra" colspan="4">
+            <div class="log"> -------------------------------Captured log call-------------------------------- <br/>DEBUG    requests_oauthlib.oauth1_auth:oauth1_auth.py:77 Signing request &lt;PreparedRequest [GET]&gt; using client &lt;Client client_key=tlBVDQqettBhxN3R2YMCkdT0x, client_secret=****, resource_owner_key=1260894064603467777-3HqxXTMpf9XTaHMXymmGp98K2ib5ae, resource_owner_secret=****, signature_method=HMAC-SHA1, signature_type=AUTH_HEADER, callback_uri=None, rsa_key=None, verifier=None, realm=None, encoding=utf-8, decoding=utf-8, nonce=None, timestamp=None&gt;
+DEBUG    requests_oauthlib.oauth1_auth:oauth1_auth.py:93 Including body in call to sign: False
+DEBUG    oauthlib.oauth1.rfc5849:__init__.py:133 Collected params: [(&#x27;id&#x27;, &#x27;1365940688416776192&#x27;), (&#x27;include_entities&#x27;, &#x27;true&#x27;), (&#x27;tweet_mode&#x27;, &#x27;extended&#x27;), (&#x27;oauth_nonce&#x27;, &#x27;50076036746876248341614500614&#x27;), (&#x27;oauth_timestamp&#x27;, &#x27;1614500614&#x27;), (&#x27;oauth_version&#x27;, &#x27;1.0&#x27;), (&#x27;oauth_signature_method&#x27;, &#x27;HMAC-SHA1&#x27;), (&#x27;oauth_consumer_key&#x27;, &#x27;tlBVDQqettBhxN3R2YMCkdT0x&#x27;), (&#x27;oauth_token&#x27;, &#x27;1260894064603467777-3HqxXTMpf9XTaHMXymmGp98K2ib5ae&#x27;)]
+DEBUG    oauthlib.oauth1.rfc5849:__init__.py:137 Normalized params: id=1365940688416776192&amp;include_entities=true&amp;oauth_consumer_key=tlBVDQqettBhxN3R2YMCkdT0x&amp;oauth_nonce=50076036746876248341614500614&amp;oauth_signature_method=HMAC-SHA1&amp;oauth_timestamp=1614500614&amp;oauth_token=1260894064603467777-3HqxXTMpf9XTaHMXymmGp98K2ib5ae&amp;oauth_version=1.0&amp;tweet_mode=extended
+DEBUG    oauthlib.oauth1.rfc5849:__init__.py:138 Normalized URI: https://api.twitter.com/1.1/statuses/show.json
+DEBUG    oauthlib.oauth1.rfc5849:__init__.py:143 Signing: signature base string: GET&amp;https%3A%2F%2Fapi.twitter.com%2F1.1%2Fstatuses%2Fshow.json&amp;id%3D1365940688416776192%26include_entities%3Dtrue%26oauth_consumer_key%3DtlBVDQqettBhxN3R2YMCkdT0x%26oauth_nonce%3D50076036746876248341614500614%26oauth_signature_method%3DHMAC-SHA1%26oauth_timestamp%3D1614500614%26oauth_token%3D1260894064603467777-3HqxXTMpf9XTaHMXymmGp98K2ib5ae%26oauth_version%3D1.0%26tweet_mode%3Dextended
+DEBUG    oauthlib.oauth1.rfc5849:__init__.py:150 Signature: 66vcnyZY7VEvyWa5hCTE39Gd/rg=
+DEBUG    oauthlib.oauth1.rfc5849:__init__.py:320 Encoding URI, headers and body to utf-8.
+DEBUG    requests_oauthlib.oauth1_auth:oauth1_auth.py:114 Updated url: https://api.twitter.com/1.1/statuses/show.json?id=1365940688416776192&amp;include_entities=true&amp;tweet_mode=extended
+DEBUG    requests_oauthlib.oauth1_auth:oauth1_auth.py:115 Updated headers: {b&#x27;User-Agent&#x27;: b&#x27;python-requests/2.25.1&#x27;, b&#x27;Accept-Encoding&#x27;: b&#x27;gzip, deflate&#x27;, b&#x27;Accept&#x27;: b&#x27;*/*&#x27;, b&#x27;Connection&#x27;: b&#x27;keep-alive&#x27;, b&#x27;Authorization&#x27;: b&#x27;OAuth oauth_nonce=&quot;50076036746876248341614500614&quot;, oauth_timestamp=&quot;1614500614&quot;, oauth_version=&quot;1.0&quot;, oauth_signature_method=&quot;HMAC-SHA1&quot;, oauth_consumer_key=&quot;tlBVDQqettBhxN3R2YMCkdT0x&quot;, oauth_token=&quot;1260894064603467777-3HqxXTMpf9XTaHMXymmGp98K2ib5ae&quot;, oauth_signature=&quot;66vcnyZY7VEvyWa5hCTE39Gd%2Frg%3D&quot;&#x27;}
+DEBUG    requests_oauthlib.oauth1_auth:oauth1_auth.py:116 Updated body: None
+DEBUG    urllib3.connectionpool:connectionpool.py:975 Starting new HTTPS connection (1): api.twitter.com:443
+DEBUG    urllib3.connectionpool:connectionpool.py:461 https://api.twitter.com:443 &quot;GET /1.1/statuses/show.json?id=1365940688416776192&amp;include_entities=true&amp;tweet_mode=extended HTTP/1.1&quot; 200 769<br/></div></td></tr></tbody>
+      <tbody class="passed results-table-row">
+        <tr>
+          <td class="col-result">Passed</td>
+          <td class="col-name">Tests/test_tweet.py::TestTweet::test_retweeter_id</td>
+          <td class="col-duration">0.99</td>
+          <td class="col-links"></td></tr>
+        <tr>
+          <td class="extra" colspan="4">
+            <div class="log"> -------------------------------Captured log call-------------------------------- <br/>DEBUG    requests_oauthlib.oauth1_auth:oauth1_auth.py:77 Signing request &lt;PreparedRequest [GET]&gt; using client &lt;Client client_key=tlBVDQqettBhxN3R2YMCkdT0x, client_secret=****, resource_owner_key=1260894064603467777-3HqxXTMpf9XTaHMXymmGp98K2ib5ae, resource_owner_secret=****, signature_method=HMAC-SHA1, signature_type=AUTH_HEADER, callback_uri=None, rsa_key=None, verifier=None, realm=None, encoding=utf-8, decoding=utf-8, nonce=None, timestamp=None&gt;
+DEBUG    requests_oauthlib.oauth1_auth:oauth1_auth.py:93 Including body in call to sign: False
+DEBUG    oauthlib.oauth1.rfc5849:__init__.py:133 Collected params: [(&#x27;id&#x27;, &#x27;1365940688416776192&#x27;), (&#x27;oauth_nonce&#x27;, &#x27;63381654838117816111614500614&#x27;), (&#x27;oauth_timestamp&#x27;, &#x27;1614500614&#x27;), (&#x27;oauth_version&#x27;, &#x27;1.0&#x27;), (&#x27;oauth_signature_method&#x27;, &#x27;HMAC-SHA1&#x27;), (&#x27;oauth_consumer_key&#x27;, &#x27;tlBVDQqettBhxN3R2YMCkdT0x&#x27;), (&#x27;oauth_token&#x27;, &#x27;1260894064603467777-3HqxXTMpf9XTaHMXymmGp98K2ib5ae&#x27;)]
+DEBUG    oauthlib.oauth1.rfc5849:__init__.py:137 Normalized params: id=1365940688416776192&amp;oauth_consumer_key=tlBVDQqettBhxN3R2YMCkdT0x&amp;oauth_nonce=63381654838117816111614500614&amp;oauth_signature_method=HMAC-SHA1&amp;oauth_timestamp=1614500614&amp;oauth_token=1260894064603467777-3HqxXTMpf9XTaHMXymmGp98K2ib5ae&amp;oauth_version=1.0
+DEBUG    oauthlib.oauth1.rfc5849:__init__.py:138 Normalized URI: https://api.twitter.com/1.1/statuses/retweeters/ids.json
+DEBUG    oauthlib.oauth1.rfc5849:__init__.py:143 Signing: signature base string: GET&amp;https%3A%2F%2Fapi.twitter.com%2F1.1%2Fstatuses%2Fretweeters%2Fids.json&amp;id%3D1365940688416776192%26oauth_consumer_key%3DtlBVDQqettBhxN3R2YMCkdT0x%26oauth_nonce%3D63381654838117816111614500614%26oauth_signature_method%3DHMAC-SHA1%26oauth_timestamp%3D1614500614%26oauth_token%3D1260894064603467777-3HqxXTMpf9XTaHMXymmGp98K2ib5ae%26oauth_version%3D1.0
+DEBUG    oauthlib.oauth1.rfc5849:__init__.py:150 Signature: CMK8ecuDrZg7tOeaBHmH8GnnQbU=
+DEBUG    oauthlib.oauth1.rfc5849:__init__.py:320 Encoding URI, headers and body to utf-8.
+DEBUG    requests_oauthlib.oauth1_auth:oauth1_auth.py:114 Updated url: https://api.twitter.com/1.1/statuses/retweeters/ids.json?id=1365940688416776192
+DEBUG    requests_oauthlib.oauth1_auth:oauth1_auth.py:115 Updated headers: {b&#x27;User-Agent&#x27;: b&#x27;python-requests/2.25.1&#x27;, b&#x27;Accept-Encoding&#x27;: b&#x27;gzip, deflate&#x27;, b&#x27;Accept&#x27;: b&#x27;*/*&#x27;, b&#x27;Connection&#x27;: b&#x27;keep-alive&#x27;, b&#x27;Authorization&#x27;: b&#x27;OAuth oauth_nonce=&quot;63381654838117816111614500614&quot;, oauth_timestamp=&quot;1614500614&quot;, oauth_version=&quot;1.0&quot;, oauth_signature_method=&quot;HMAC-SHA1&quot;, oauth_consumer_key=&quot;tlBVDQqettBhxN3R2YMCkdT0x&quot;, oauth_token=&quot;1260894064603467777-3HqxXTMpf9XTaHMXymmGp98K2ib5ae&quot;, oauth_signature=&quot;CMK8ecuDrZg7tOeaBHmH8GnnQbU%3D&quot;&#x27;}
+DEBUG    requests_oauthlib.oauth1_auth:oauth1_auth.py:116 Updated body: None
+DEBUG    urllib3.connectionpool:connectionpool.py:975 Starting new HTTPS connection (1): api.twitter.com:443
+DEBUG    urllib3.connectionpool:connectionpool.py:461 https://api.twitter.com:443 &quot;GET /1.1/statuses/retweeters/ids.json?id=1365940688416776192 HTTP/1.1&quot; 200 113<br/></div></td></tr></tbody>
+      <tbody class="passed results-table-row">
+        <tr>
+          <td class="col-result">Passed</td>
+          <td class="col-name">Tests/test_tweet.py::TestTweet::test_unretweet</td>
+          <td class="col-duration">2.47</td>
+          <td class="col-links"></td></tr>
+        <tr>
+          <td class="extra" colspan="4">
+            <div class="log"> -------------------------------Captured log call-------------------------------- <br/>DEBUG    requests_oauthlib.oauth1_auth:oauth1_auth.py:77 Signing request &lt;PreparedRequest [POST]&gt; using client &lt;Client client_key=tlBVDQqettBhxN3R2YMCkdT0x, client_secret=****, resource_owner_key=1260894064603467777-3HqxXTMpf9XTaHMXymmGp98K2ib5ae, resource_owner_secret=****, signature_method=HMAC-SHA1, signature_type=AUTH_HEADER, callback_uri=None, rsa_key=None, verifier=None, realm=None, encoding=utf-8, decoding=utf-8, nonce=None, timestamp=None&gt;
+DEBUG    requests_oauthlib.oauth1_auth:oauth1_auth.py:93 Including body in call to sign: False
+DEBUG    oauthlib.oauth1.rfc5849:__init__.py:133 Collected params: [(&#x27;oauth_nonce&#x27;, &#x27;56249240532765690031614500615&#x27;), (&#x27;oauth_timestamp&#x27;, &#x27;1614500615&#x27;), (&#x27;oauth_version&#x27;, &#x27;1.0&#x27;), (&#x27;oauth_signature_method&#x27;, &#x27;HMAC-SHA1&#x27;), (&#x27;oauth_consumer_key&#x27;, &#x27;tlBVDQqettBhxN3R2YMCkdT0x&#x27;), (&#x27;oauth_token&#x27;, &#x27;1260894064603467777-3HqxXTMpf9XTaHMXymmGp98K2ib5ae&#x27;)]
+DEBUG    oauthlib.oauth1.rfc5849:__init__.py:137 Normalized params: oauth_consumer_key=tlBVDQqettBhxN3R2YMCkdT0x&amp;oauth_nonce=56249240532765690031614500615&amp;oauth_signature_method=HMAC-SHA1&amp;oauth_timestamp=1614500615&amp;oauth_token=1260894064603467777-3HqxXTMpf9XTaHMXymmGp98K2ib5ae&amp;oauth_version=1.0
+DEBUG    oauthlib.oauth1.rfc5849:__init__.py:138 Normalized URI: https://api.twitter.com/1.1/statuses/unretweet/1365940692011290625.json
+DEBUG    oauthlib.oauth1.rfc5849:__init__.py:143 Signing: signature base string: POST&amp;https%3A%2F%2Fapi.twitter.com%2F1.1%2Fstatuses%2Funretweet%2F1365940692011290625.json&amp;oauth_consumer_key%3DtlBVDQqettBhxN3R2YMCkdT0x%26oauth_nonce%3D56249240532765690031614500615%26oauth_signature_method%3DHMAC-SHA1%26oauth_timestamp%3D1614500615%26oauth_token%3D1260894064603467777-3HqxXTMpf9XTaHMXymmGp98K2ib5ae%26oauth_version%3D1.0
+DEBUG    oauthlib.oauth1.rfc5849:__init__.py:150 Signature: 41J/SVVR79rX4QrZCMlfczddz7w=
+DEBUG    oauthlib.oauth1.rfc5849:__init__.py:320 Encoding URI, headers and body to utf-8.
+DEBUG    requests_oauthlib.oauth1_auth:oauth1_auth.py:114 Updated url: https://api.twitter.com/1.1/statuses/unretweet/1365940692011290625.json
+DEBUG    requests_oauthlib.oauth1_auth:oauth1_auth.py:115 Updated headers: {b&#x27;User-Agent&#x27;: b&#x27;python-requests/2.25.1&#x27;, b&#x27;Accept-Encoding&#x27;: b&#x27;gzip, deflate&#x27;, b&#x27;Accept&#x27;: b&#x27;*/*&#x27;, b&#x27;Connection&#x27;: b&#x27;keep-alive&#x27;, b&#x27;Content-Length&#x27;: b&#x27;0&#x27;, b&#x27;Authorization&#x27;: b&#x27;OAuth oauth_nonce=&quot;56249240532765690031614500615&quot;, oauth_timestamp=&quot;1614500615&quot;, oauth_version=&quot;1.0&quot;, oauth_signature_method=&quot;HMAC-SHA1&quot;, oauth_consumer_key=&quot;tlBVDQqettBhxN3R2YMCkdT0x&quot;, oauth_token=&quot;1260894064603467777-3HqxXTMpf9XTaHMXymmGp98K2ib5ae&quot;, oauth_signature=&quot;41J%2FSVVR79rX4QrZCMlfczddz7w%3D&quot;&#x27;}
+DEBUG    requests_oauthlib.oauth1_auth:oauth1_auth.py:116 Updated body: None
+DEBUG    urllib3.connectionpool:connectionpool.py:975 Starting new HTTPS connection (1): api.twitter.com:443
+DEBUG    urllib3.connectionpool:connectionpool.py:461 https://api.twitter.com:443 &quot;POST /1.1/statuses/unretweet/1365940692011290625.json HTTP/1.1&quot; 200 747
+DEBUG    requests_oauthlib.oauth1_auth:oauth1_auth.py:77 Signing request &lt;PreparedRequest [GET]&gt; using client &lt;Client client_key=tlBVDQqettBhxN3R2YMCkdT0x, client_secret=****, resource_owner_key=1260894064603467777-3HqxXTMpf9XTaHMXymmGp98K2ib5ae, resource_owner_secret=****, signature_method=HMAC-SHA1, signature_type=AUTH_HEADER, callback_uri=None, rsa_key=None, verifier=None, realm=None, encoding=utf-8, decoding=utf-8, nonce=None, timestamp=None&gt;
+DEBUG    requests_oauthlib.oauth1_auth:oauth1_auth.py:93 Including body in call to sign: False
+DEBUG    oauthlib.oauth1.rfc5849:__init__.py:133 Collected params: [(&#x27;id&#x27;, &#x27;1365940688416776192&#x27;), (&#x27;include_entities&#x27;, &#x27;true&#x27;), (&#x27;tweet_mode&#x27;, &#x27;extended&#x27;), (&#x27;oauth_nonce&#x27;, &#x27;178886245901746625761614500616&#x27;), (&#x27;oauth_timestamp&#x27;, &#x27;1614500616&#x27;), (&#x27;oauth_version&#x27;, &#x27;1.0&#x27;), (&#x27;oauth_signature_method&#x27;, &#x27;HMAC-SHA1&#x27;), (&#x27;oauth_consumer_key&#x27;, &#x27;tlBVDQqettBhxN3R2YMCkdT0x&#x27;), (&#x27;oauth_token&#x27;, &#x27;1260894064603467777-3HqxXTMpf9XTaHMXymmGp98K2ib5ae&#x27;)]
+DEBUG    oauthlib.oauth1.rfc5849:__init__.py:137 Normalized params: id=1365940688416776192&amp;include_entities=true&amp;oauth_consumer_key=tlBVDQqettBhxN3R2YMCkdT0x&amp;oauth_nonce=178886245901746625761614500616&amp;oauth_signature_method=HMAC-SHA1&amp;oauth_timestamp=1614500616&amp;oauth_token=1260894064603467777-3HqxXTMpf9XTaHMXymmGp98K2ib5ae&amp;oauth_version=1.0&amp;tweet_mode=extended
+DEBUG    oauthlib.oauth1.rfc5849:__init__.py:138 Normalized URI: https://api.twitter.com/1.1/statuses/show.json
+DEBUG    oauthlib.oauth1.rfc5849:__init__.py:143 Signing: signature base string: GET&amp;https%3A%2F%2Fapi.twitter.com%2F1.1%2Fstatuses%2Fshow.json&amp;id%3D1365940688416776192%26include_entities%3Dtrue%26oauth_consumer_key%3DtlBVDQqettBhxN3R2YMCkdT0x%26oauth_nonce%3D178886245901746625761614500616%26oauth_signature_method%3DHMAC-SHA1%26oauth_timestamp%3D1614500616%26oauth_token%3D1260894064603467777-3HqxXTMpf9XTaHMXymmGp98K2ib5ae%26oauth_version%3D1.0%26tweet_mode%3Dextended
+DEBUG    oauthlib.oauth1.rfc5849:__init__.py:150 Signature: hMiWwrWhuaHvrZgJFIxMqFZ4KGc=
+DEBUG    oauthlib.oauth1.rfc5849:__init__.py:320 Encoding URI, headers and body to utf-8.
+DEBUG    requests_oauthlib.oauth1_auth:oauth1_auth.py:114 Updated url: https://api.twitter.com/1.1/statuses/show.json?id=1365940688416776192&amp;include_entities=true&amp;tweet_mode=extended
+DEBUG    requests_oauthlib.oauth1_auth:oauth1_auth.py:115 Updated headers: {b&#x27;User-Agent&#x27;: b&#x27;python-requests/2.25.1&#x27;, b&#x27;Accept-Encoding&#x27;: b&#x27;gzip, deflate&#x27;, b&#x27;Accept&#x27;: b&#x27;*/*&#x27;, b&#x27;Connection&#x27;: b&#x27;keep-alive&#x27;, b&#x27;Authorization&#x27;: b&#x27;OAuth oauth_nonce=&quot;178886245901746625761614500616&quot;, oauth_timestamp=&quot;1614500616&quot;, oauth_version=&quot;1.0&quot;, oauth_signature_method=&quot;HMAC-SHA1&quot;, oauth_consumer_key=&quot;tlBVDQqettBhxN3R2YMCkdT0x&quot;, oauth_token=&quot;1260894064603467777-3HqxXTMpf9XTaHMXymmGp98K2ib5ae&quot;, oauth_signature=&quot;hMiWwrWhuaHvrZgJFIxMqFZ4KGc%3D&quot;&#x27;}
+DEBUG    requests_oauthlib.oauth1_auth:oauth1_auth.py:116 Updated body: None
+DEBUG    urllib3.connectionpool:connectionpool.py:975 Starting new HTTPS connection (1): api.twitter.com:443
+DEBUG    urllib3.connectionpool:connectionpool.py:461 https://api.twitter.com:443 &quot;GET /1.1/statuses/show.json?id=1365940688416776192&amp;include_entities=true&amp;tweet_mode=extended HTTP/1.1&quot; 200 766
+DEBUG    requests_oauthlib.oauth1_auth:oauth1_auth.py:77 Signing request &lt;PreparedRequest [GET]&gt; using client &lt;Client client_key=tlBVDQqettBhxN3R2YMCkdT0x, client_secret=****, resource_owner_key=1260894064603467777-3HqxXTMpf9XTaHMXymmGp98K2ib5ae, resource_owner_secret=****, signature_method=HMAC-SHA1, signature_type=AUTH_HEADER, callback_uri=None, rsa_key=None, verifier=None, realm=None, encoding=utf-8, decoding=utf-8, nonce=None, timestamp=None&gt;
+DEBUG    requests_oauthlib.oauth1_auth:oauth1_auth.py:93 Including body in call to sign: False
+DEBUG    oauthlib.oauth1.rfc5849:__init__.py:133 Collected params: [(&#x27;id&#x27;, &#x27;1365940688416776192&#x27;), (&#x27;oauth_nonce&#x27;, &#x27;10552971315655214891614500617&#x27;), (&#x27;oauth_timestamp&#x27;, &#x27;1614500617&#x27;), (&#x27;oauth_version&#x27;, &#x27;1.0&#x27;), (&#x27;oauth_signature_method&#x27;, &#x27;HMAC-SHA1&#x27;), (&#x27;oauth_consumer_key&#x27;, &#x27;tlBVDQqettBhxN3R2YMCkdT0x&#x27;), (&#x27;oauth_token&#x27;, &#x27;1260894064603467777-3HqxXTMpf9XTaHMXymmGp98K2ib5ae&#x27;)]
+DEBUG    oauthlib.oauth1.rfc5849:__init__.py:137 Normalized params: id=1365940688416776192&amp;oauth_consumer_key=tlBVDQqettBhxN3R2YMCkdT0x&amp;oauth_nonce=10552971315655214891614500617&amp;oauth_signature_method=HMAC-SHA1&amp;oauth_timestamp=1614500617&amp;oauth_token=1260894064603467777-3HqxXTMpf9XTaHMXymmGp98K2ib5ae&amp;oauth_version=1.0
+DEBUG    oauthlib.oauth1.rfc5849:__init__.py:138 Normalized URI: https://api.twitter.com/1.1/statuses/retweeters/ids.json
+DEBUG    oauthlib.oauth1.rfc5849:__init__.py:143 Signing: signature base string: GET&amp;https%3A%2F%2Fapi.twitter.com%2F1.1%2Fstatuses%2Fretweeters%2Fids.json&amp;id%3D1365940688416776192%26oauth_consumer_key%3DtlBVDQqettBhxN3R2YMCkdT0x%26oauth_nonce%3D10552971315655214891614500617%26oauth_signature_method%3DHMAC-SHA1%26oauth_timestamp%3D1614500617%26oauth_token%3D1260894064603467777-3HqxXTMpf9XTaHMXymmGp98K2ib5ae%26oauth_version%3D1.0
+DEBUG    oauthlib.oauth1.rfc5849:__init__.py:150 Signature: U2R3x+uqIfX35Kf9lFNTM/8DZv4=
+DEBUG    oauthlib.oauth1.rfc5849:__init__.py:320 Encoding URI, headers and body to utf-8.
+DEBUG    requests_oauthlib.oauth1_auth:oauth1_auth.py:114 Updated url: https://api.twitter.com/1.1/statuses/retweeters/ids.json?id=1365940688416776192
+DEBUG    requests_oauthlib.oauth1_auth:oauth1_auth.py:115 Updated headers: {b&#x27;User-Agent&#x27;: b&#x27;python-requests/2.25.1&#x27;, b&#x27;Accept-Encoding&#x27;: b&#x27;gzip, deflate&#x27;, b&#x27;Accept&#x27;: b&#x27;*/*&#x27;, b&#x27;Connection&#x27;: b&#x27;keep-alive&#x27;, b&#x27;Authorization&#x27;: b&#x27;OAuth oauth_nonce=&quot;10552971315655214891614500617&quot;, oauth_timestamp=&quot;1614500617&quot;, oauth_version=&quot;1.0&quot;, oauth_signature_method=&quot;HMAC-SHA1&quot;, oauth_consumer_key=&quot;tlBVDQqettBhxN3R2YMCkdT0x&quot;, oauth_token=&quot;1260894064603467777-3HqxXTMpf9XTaHMXymmGp98K2ib5ae&quot;, oauth_signature=&quot;U2R3x%2BuqIfX35Kf9lFNTM%2F8DZv4%3D&quot;&#x27;}
+DEBUG    requests_oauthlib.oauth1_auth:oauth1_auth.py:116 Updated body: None
+DEBUG    urllib3.connectionpool:connectionpool.py:975 Starting new HTTPS connection (1): api.twitter.com:443
+DEBUG    urllib3.connectionpool:connectionpool.py:461 https://api.twitter.com:443 &quot;GET /1.1/statuses/retweeters/ids.json?id=1365940688416776192 HTTP/1.1&quot; 200 95<br/></div></td></tr></tbody>
+      <tbody class="passed results-table-row">
+        <tr>
+          <td class="col-result">Passed</td>
+          <td class="col-name">Tests/test_tweet.py::TestTweet::test_delete_tweet</td>
+          <td class="col-duration">0.66</td>
+          <td class="col-links"></td></tr>
+        <tr>
+          <td class="extra" colspan="4">
+            <div class="log"> -------------------------------Captured log call-------------------------------- <br/>DEBUG    requests_oauthlib.oauth1_auth:oauth1_auth.py:77 Signing request &lt;PreparedRequest [POST]&gt; using client &lt;Client client_key=tlBVDQqettBhxN3R2YMCkdT0x, client_secret=****, resource_owner_key=1260894064603467777-3HqxXTMpf9XTaHMXymmGp98K2ib5ae, resource_owner_secret=****, signature_method=HMAC-SHA1, signature_type=AUTH_HEADER, callback_uri=None, rsa_key=None, verifier=None, realm=None, encoding=utf-8, decoding=utf-8, nonce=None, timestamp=None&gt;
+DEBUG    requests_oauthlib.oauth1_auth:oauth1_auth.py:93 Including body in call to sign: False
+DEBUG    oauthlib.oauth1.rfc5849:__init__.py:133 Collected params: [(&#x27;oauth_nonce&#x27;, &#x27;36347787862226321801614500618&#x27;), (&#x27;oauth_timestamp&#x27;, &#x27;1614500618&#x27;), (&#x27;oauth_version&#x27;, &#x27;1.0&#x27;), (&#x27;oauth_signature_method&#x27;, &#x27;HMAC-SHA1&#x27;), (&#x27;oauth_consumer_key&#x27;, &#x27;tlBVDQqettBhxN3R2YMCkdT0x&#x27;), (&#x27;oauth_token&#x27;, &#x27;1260894064603467777-3HqxXTMpf9XTaHMXymmGp98K2ib5ae&#x27;)]
+DEBUG    oauthlib.oauth1.rfc5849:__init__.py:137 Normalized params: oauth_consumer_key=tlBVDQqettBhxN3R2YMCkdT0x&amp;oauth_nonce=36347787862226321801614500618&amp;oauth_signature_method=HMAC-SHA1&amp;oauth_timestamp=1614500618&amp;oauth_token=1260894064603467777-3HqxXTMpf9XTaHMXymmGp98K2ib5ae&amp;oauth_version=1.0
+DEBUG    oauthlib.oauth1.rfc5849:__init__.py:138 Normalized URI: https://api.twitter.com/1.1/statuses/destroy/1365940688416776192.json
+DEBUG    oauthlib.oauth1.rfc5849:__init__.py:143 Signing: signature base string: POST&amp;https%3A%2F%2Fapi.twitter.com%2F1.1%2Fstatuses%2Fdestroy%2F1365940688416776192.json&amp;oauth_consumer_key%3DtlBVDQqettBhxN3R2YMCkdT0x%26oauth_nonce%3D36347787862226321801614500618%26oauth_signature_method%3DHMAC-SHA1%26oauth_timestamp%3D1614500618%26oauth_token%3D1260894064603467777-3HqxXTMpf9XTaHMXymmGp98K2ib5ae%26oauth_version%3D1.0
+DEBUG    oauthlib.oauth1.rfc5849:__init__.py:150 Signature: 6+8EBq9D6powT+K/c8lReE9YbFI=
+DEBUG    oauthlib.oauth1.rfc5849:__init__.py:320 Encoding URI, headers and body to utf-8.
+DEBUG    requests_oauthlib.oauth1_auth:oauth1_auth.py:114 Updated url: https://api.twitter.com/1.1/statuses/destroy/1365940688416776192.json
+DEBUG    requests_oauthlib.oauth1_auth:oauth1_auth.py:115 Updated headers: {b&#x27;User-Agent&#x27;: b&#x27;python-requests/2.25.1&#x27;, b&#x27;Accept-Encoding&#x27;: b&#x27;gzip, deflate&#x27;, b&#x27;Accept&#x27;: b&#x27;*/*&#x27;, b&#x27;Connection&#x27;: b&#x27;keep-alive&#x27;, b&#x27;Content-Length&#x27;: b&#x27;0&#x27;, b&#x27;Authorization&#x27;: b&#x27;OAuth oauth_nonce=&quot;36347787862226321801614500618&quot;, oauth_timestamp=&quot;1614500618&quot;, oauth_version=&quot;1.0&quot;, oauth_signature_method=&quot;HMAC-SHA1&quot;, oauth_consumer_key=&quot;tlBVDQqettBhxN3R2YMCkdT0x&quot;, oauth_token=&quot;1260894064603467777-3HqxXTMpf9XTaHMXymmGp98K2ib5ae&quot;, oauth_signature=&quot;6%2B8EBq9D6powT%2BK%2Fc8lReE9YbFI%3D&quot;&#x27;}
+DEBUG    requests_oauthlib.oauth1_auth:oauth1_auth.py:116 Updated body: None
+DEBUG    urllib3.connectionpool:connectionpool.py:975 Starting new HTTPS connection (1): api.twitter.com:443
+DEBUG    urllib3.connectionpool:connectionpool.py:461 https://api.twitter.com:443 &quot;POST /1.1/statuses/destroy/1365940688416776192.json HTTP/1.1&quot; 200 743<br/></div></td></tr></tbody></table></body></html>
