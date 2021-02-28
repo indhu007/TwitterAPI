@@ -53,6 +53,9 @@ Run a test using this command
 pytest --capture=no --verbose --html=pytest_report.html --email_pytest_report Y --self-contained-html --capture=sys
 ```
 
+**Note** : The **pytest**-**dependency** module is  applied to tests. So, if the creation of tweet tests fails, the remaining tests dependent on this test will not be executed and marked as skipped in test report
+
+
 
 
 ## **Test Reports**
