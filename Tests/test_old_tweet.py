@@ -14,8 +14,8 @@ class Test_OldTweet(Tweets):
     path = os.path.join(parent_dir, id)
     filename = id + '.txt'
 
-    # @pytest.fixture(scope="module")
-    def test_create_data(self):
+    @pytest.fixture(scope="module")
+    def create_data(self):
         try:
             os.makedirs(self.path, exist_ok=True)
 
@@ -37,7 +37,7 @@ class Test_OldTweet(Tweets):
         except OSError as error:
             print(error)
 
-    def test_tweet_content(self):
+    def test_tweet_content(self,create_data):
         response = self.get_tweet_status(self.id)
         res = response.json()
         assert response.status_code == 200 , self.logger_test.error(res.get("error"))
@@ -60,7 +60,7 @@ class Test_OldTweet(Tweets):
                     content = line.split(' ', 1)[1]
                     break
         Retweet_Count = str(res.get("retweet_count"))
-        assert Retweet_Count == content.rstrip("\n"), self.logger_test.error("Retweet Count is not matching with the response> check the ID of the tweet")
+        assert Retweet_Count == content.rstrip(" \t\n\r"), self.logger_test.error("Retweet Count is not matching with the response> check the ID of the tweet")
 
     def test_retweet_id(self):
         response = self.get_retweeter_id(self.id)
