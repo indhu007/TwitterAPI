@@ -62,3 +62,30 @@
 6. Delete the Tweet: 
 
    a. Verify the tweet is deleted successfully by checking the status code
+   
+**Existing Tweet Verification:**
+Data Creation:
+
+​	a. Get a Tweet ID from the URL and GET tweet status API is used to collect data like tweet  content, retweet count and save it in a file
+
+​	b. Also, download the video if available in the tweet.
+
+​	c. Get the retweeter's id and store it
+
+
+
+** TestCase: **
+
+1. Get the tweet text:
+
+   a. Verify the status code is 200
+
+   b. Get the tweet text and check it matches with the stored content in the file
+   
+2. Get the tweet Count:
+
+   a. Verify the status code is 200
+   
+   b. Get the tweet Count and check it matches with the stored content in the file
+
+   c. Get the retweeters id:Verify the status code is 200Get the retweeters id and check it matches with the stored content in the file
