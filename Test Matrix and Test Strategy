@@ -1,0 +1,64 @@
+## Test Matrix
+
+| S. No | **API Call**                                | **Action**                                                   |
+| ----- | ------------------------------------------- | ------------------------------------------------------------ |
+| 1     | POST /statuses/update.json?status={ status} | Updates the authenticating user's current status             |
+| 2     | POST /statuses/retweet/:id                  | Retweets a tweet. Returns the original Tweet with Retweet details embedded. |
+| 3     | GET /statuses/show/:id                      | Returns a single Tweet, specified by the id parameter.       |
+| 4     | GET /statuses/retweets/:id                  | Returns the most recent retweets of the Tweet specified by the id parameter |
+| 5     | GET /statuses/retweeters/ids                | Returns a collection of up to 100 user IDs belonging to users who have retweeted the Tweet specified by the id parameter. |
+| 6     | POST /statuses/unretweet/:id                | Untweets a retweeted status                                  |
+| 7     | POST /statuses/destroy/:id                  | Destroys the status specified by the required ID parameter.  |
+
+
+
+## Test Scenarios
+
+| S.No | Test Scenario                                       | Test Action           | Test Action Description                                      |
+| ---- | --------------------------------------------------- | --------------------- | ------------------------------------------------------------ |
+| #    | Execute API call with **valid required parameters** | Validate status codes | All requests should return 2XX HTTP status code. If the error codes are unsucessful, the error message from the response will be logged in the log file for debugging purpose |
+|      |                                                     | Validate payload      | Response is a well-formed JSON object.                       |
+|      |                                                     | Validate state        | For all the POST operations, the script ensures that the action has been performed correctly in the system by inspecting the response of the GET request has the same value in the response of the post method |
+
+
+
+## Test Cases
+
+1. Post a Tweet through API and verify:
+
+   a. The status code to ensure that the tweet is posted successfully. 
+
+   b. Verify the posted tweet’s text is the same as the input text. 
+2.  Retweet the above tweet: 
+
+​  a. The status code to ensure that the retweeted successfully. 
+
+​  b. Verify the posted tweet’s text is the same as the tweet posted earlier.
+
+​  c. Verify the id of the tweet returned in the retweet response is the noted tweet id. 
+
+​  d. Store the retweet count and the retweeter id.
+
+3. Get the Retweet Count: 
+
+   a. Verify the status code is 200.
+
+   b. Store the retweet count from the API response and compare if it matches the response for the current request.
+
+4. 4. Get the Retweeters ID:
+
+   a.  Verify the status code is 200. 
+
+   b. Verify the retweeter id is the same as the id stored
+
+5. Unretweet and check the retweet count and retweeters id:
+
+   a. Verify the status code is 200.
+
+   b. Verify Retweet count is decreased by 1.
+
+   c. Get the retweeters id through the API used in previous step and check the retweeter id is removed.
+   
+6. Delete the Tweet: 
+
+   a. Verify the tweet is deleted successfully by checking the status code
