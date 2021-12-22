@@ -28,7 +28,7 @@ jobs:
       # Runs a single command using the runners shell
       - uses: microsoft/variable-substitution@v1 
         with:
-          files: 'employee.json'
+          files: 'employees.json'
         env:
           username: tcranz
           password: 1234
