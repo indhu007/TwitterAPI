@@ -38,4 +38,7 @@ jobs:
         env:
           username: tcranz
           password: 1234
+      - name: run python file
+        run: |
+          python3 hello.py
       
