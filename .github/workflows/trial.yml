@@ -21,7 +21,7 @@ jobs:
     runs-on: ubuntu-latest
     defaults:
       run: 
-        working-directory: ./test2/test3
+        working-directory: ./test2
 
     # Steps represent a sequence of tasks that will be executed as part of the job
     steps:
