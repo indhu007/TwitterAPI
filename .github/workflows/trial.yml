@@ -26,6 +26,8 @@ jobs:
       - uses: actions/checkout@v2
       - name: Install dependencies with yarn
         working-directory: ./test2/test3
+        run: |
+          npm install -g yarn
 
       # Runs a single command using the runners shell
       - uses: microsoft/variable-substitution@v1 
