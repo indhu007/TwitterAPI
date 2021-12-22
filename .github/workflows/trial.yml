@@ -40,5 +40,5 @@ jobs:
           password: 1234
       - name: run python file
         run: |
-          python3 hello.py
+          python3 hello_world.py
       
